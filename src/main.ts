@@ -20,19 +20,7 @@
 import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
 import "#src/util/google_tag_manager.js";
 
-let viewer = setupDefaultViewer();
-
-viewer.state.changed.add(() => {
-  if (window && window.parent) {
-    window.parent.postMessage(
-      {
-        type: "synchash",
-        state: viewer.state.toJSON(),
-      },
-      "*",
-    );
-  }
-});
+setupDefaultViewer();
 
 window.addEventListener("message", (event) => {
   const { type, hash } = event.data;

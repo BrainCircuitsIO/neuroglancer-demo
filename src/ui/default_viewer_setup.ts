@@ -24,6 +24,7 @@ import { makeDefaultViewer } from "#src/ui/default_viewer.js";
 import type { MinimalViewerOptions } from "#src/ui/minimal_viewer.js";
 import { bindTitle } from "#src/ui/title.js";
 import { UrlHashBinding } from "#src/ui/url_hash_binding.js";
+import { getCachedJson } from "#src/util/trackable.js";
 
 declare let NEUROGLANCER_DEFAULT_STATE_FRAGMENT: string | undefined;
 
@@ -62,6 +63,21 @@ export function setupDefaultViewer(options?: Partial<MinimalViewerOptions>) {
 
   bindDefaultCopyHandler(viewer);
   bindDefaultPasteHandler(viewer);
+
+  viewer.state.changed.add(() => {
+    try {
+      const stateJson = getCachedJson(viewer.state).value;
+      window.parent.postMessage(
+        {
+          type: "synchash",
+          state: stateJson,
+        },
+        "*",
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  });
 
   return viewer;
 }
