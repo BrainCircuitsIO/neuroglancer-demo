@@ -3038,19 +3038,15 @@ class MergeSegmentsTool extends LayerTool<SegmentationUserLayer> {
     }
     const {
       state: { mergeState },
-      segmentsState: { timestamp },
       mergeAnnotationState,
     } = graphConnection;
-    if (checkSegmentationOld(timestamp, activation)) {
-      return;
-    }
     const lineTool = new MergeSegmentsPlaceLineTool(
       this.layer,
       mergeAnnotationState,
     );
     // Switch selected layer to the layer associated with the tool
     // to enable to place line tool. Swap back when deactivating.
-    const { selectedLayer, selectionState } = this.layer.manager.root;
+    const { selectedLayer } = this.layer.manager.root;
     const previousSelectedLayer = selectedLayer.layer;
     const previousSelectedLayerVisible = selectedLayer.visible;
     const previousTool = tool.value;
@@ -3062,7 +3058,6 @@ class MergeSegmentsTool extends LayerTool<SegmentationUserLayer> {
       selectedLayer.layer = previousSelectedLayer;
       selectedLayer.visible = previousSelectedLayerVisible;
       tool.value = previousTool;
-      selectionState.restoreState(prevousSelectionState);
     });
     const { merges, autoSubmit } = mergeState;
     const { body, header } =
