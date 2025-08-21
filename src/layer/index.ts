@@ -1469,10 +1469,13 @@ export class TrackableDataSelectionState
   select() {
     const { pin } = this;
     this.location.visible = true;
-    pin.value = !pin.value;
+    // https://github.com/google/neuroglancer/pull/826/commits/90c58059171be6b30c409c5617a6d118d860e2ff
+    pin.value = true;
+    this.capture();
+    /*pin.value = !pin.value;
     if (pin.value) {
       this.capture();
-    }
+    }*/
   }
   capture(canRetain = false) {
     const newValue = capturePersistentViewerSelectionState(
