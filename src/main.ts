@@ -21,3 +21,14 @@ import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
 import "#src/util/google_tag_manager.js";
 
 setupDefaultViewer();
+
+window.addEventListener("keydown", (event) => {
+  window.parent.postMessage(
+    {
+      type: "keyboardEvent",
+      key: event.key,
+      code: event.code,
+    },
+    "*",
+  );
+});

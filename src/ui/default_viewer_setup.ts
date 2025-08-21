@@ -40,6 +40,7 @@ import {
   verifyString,
 } from "#src/util/json.js";
 import type { Viewer } from "#src/viewer.js";
+import { getCachedJson } from "#src/util/trackable.js";
 
 declare let NEUROGLANCER_DEFAULT_STATE_FRAGMENT: string | undefined;
 
@@ -200,6 +201,21 @@ export function setupDefaultViewer() {
 
   bindDefaultCopyHandler(viewer);
   bindDefaultPasteHandler(viewer);
+
+  viewer.state.changed.add(() => {
+    try {
+      const stateJson = getCachedJson(viewer.state).value;
+      window.parent.postMessage(
+        {
+          type: "synchash",
+          state: stateJson,
+        },
+        "*",
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  });
 
   return viewer;
 }
