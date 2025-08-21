@@ -452,6 +452,8 @@ export function dispatchEvent(
   detail: any,
   eventMap: EventActionMapInterface,
 ) {
+  const identifiersToSkip = ["digit1", "digit2", "digit3", "digit4", "digit5"];
+  if (identifiersToSkip.includes(baseIdentifier)) return;
   const eventIdentifier = eventPhaseNames[eventPhase] + ":" + baseIdentifier;
   const eventAction = eventMap.get(eventIdentifier);
   dispatchEventAction(originalEvent, detail, eventAction);
