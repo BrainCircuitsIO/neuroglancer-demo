@@ -28,6 +28,7 @@ import { bindScreenshotDialog } from "#src/ui/screenshot_menu.js";
 import { bindStateEditor } from "#src/ui/state_editor.js";
 import { bindTitle } from "#src/ui/title.js";
 import { UrlHashBinding } from "#src/ui/url_hash_binding.js";
+import { getCachedJson } from "#src/util/trackable.js";
 
 declare let NEUROGLANCER_DEFAULT_STATE_FRAGMENT: string | undefined;
 
@@ -70,6 +71,21 @@ export function setupDefaultViewer(options?: Partial<MinimalViewerOptions>) {
   bindCommandPalette(viewer);
   bindStateEditor(viewer);
   bindScreenshotDialog(viewer);
+
+  viewer.state.changed.add(() => {
+    try {
+      const stateJson = getCachedJson(viewer.state).value;
+      window.parent.postMessage(
+        {
+          type: "synchash",
+          state: stateJson,
+        },
+        "*",
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  });
 
   return viewer;
 }
