@@ -1531,10 +1531,10 @@ class GraphConnection extends SegmentationGraphSourceConnection {
           // remind me why want to add ourselves compared to keeping it empty
           // if it is non empty, graphene knows there is a tool locking it
           segmentsState.timestampOwner.add(layer.managedLayer.name);
-          console.log("added editing self lock");
+          // console.log("added editing self lock");
         } else {
           segmentsState.timestampOwner.delete(layer.managedLayer.name);
-          console.log("removed editing self lock");
+          // console.log("removed editing self lock");
         }
       }
     };
