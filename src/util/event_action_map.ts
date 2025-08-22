@@ -452,8 +452,26 @@ export function dispatchEvent(
   detail: any,
   eventMap: EventActionMapInterface,
 ) {
-  const identifiersToSkip = ["digit1", "digit2", "digit3", "digit4", "digit5"];
-  if (identifiersToSkip.includes(baseIdentifier)) return;
+  const identifiersToSkip = [
+    "digit1",
+    "digit2",
+    "digit3",
+    "digit4",
+    "digit5",
+    "keyq",
+    "keyw",
+  ];
+  if (identifiersToSkip.includes(baseIdentifier)) {
+    window.parent.postMessage(
+      {
+        type: "keyboardEvent",
+        key: baseIdentifier,
+      },
+      "*",
+    );
+    originalEvent.stopPropagation();
+    return;
+  }
   const eventIdentifier = eventPhaseNames[eventPhase] + ":" + baseIdentifier;
   const eventAction = eventMap.get(eventIdentifier);
   dispatchEventAction(originalEvent, detail, eventAction);
