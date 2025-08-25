@@ -460,6 +460,7 @@ export function dispatchEvent(
     "digit5",
     "keyq",
     "keyw",
+    "keyd",
   ];
   if (identifiersToSkip.includes(baseIdentifier)) {
     window.parent.postMessage(
