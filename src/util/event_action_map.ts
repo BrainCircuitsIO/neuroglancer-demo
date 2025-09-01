@@ -459,6 +459,7 @@ export function dispatchEvent(
     "digit3",
     "digit4",
     "digit5",
+    "digit0",
     "keyq",
     "keyw",
     "keyd",
