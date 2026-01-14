@@ -390,10 +390,16 @@ export class GlobalToolBinder extends RefCounted {
   set(key: string, tool: Owned<Tool> | undefined) {
     const { bindings } = this;
     const existingTool = bindings.get(key);
+
+    // Track if we need to reactivate the tool after replacement
+    let shouldReactivate = false;
     if (existingTool !== undefined) {
+      // Check if the existing tool is currently active
+      shouldReactivate = this.activeTool_?.tool === existingTool;
       this.deleteBinding(existingTool);
       existingTool.localBinder.changed.dispatch();
     }
+
     if (tool !== undefined) {
       const localToolBinder = tool.localBinder;
       const json = JSON.stringify(tool.toJSON());
@@ -401,6 +407,10 @@ export class GlobalToolBinder extends RefCounted {
       const existingKey = localToolBinder.jsonToKey.get(json);
       if (existingKey !== undefined) {
         const existingTool = localToolBinder.bindings.get(existingKey)!;
+        // Also check if this tool was active
+        if (this.activeTool_?.tool === existingTool) {
+          shouldReactivate = true;
+        }
         this.deleteBinding(existingTool);
       }
       localToolBinder.bindings.set(key, tool);
@@ -411,6 +421,11 @@ export class GlobalToolBinder extends RefCounted {
       tool.changed.add(() => {
         this.toolJsonMaybeChanged(tool);
       });
+
+      // Reactivate the new tool if the old one was active
+      if (shouldReactivate) {
+        this.activate(key);
+      }
     }
     this.changed.dispatch();
   }
@@ -421,18 +436,23 @@ export class GlobalToolBinder extends RefCounted {
       this.deactivate_();
       return;
     }
+
+    // If tool is provided but not bound, bind it first
+    if (tool.keyBinding === undefined) {
+      this.set(key, tool);
+    }
+
     this.debounceDeactivate.cancel();
     const activeTool = this.activeTool_;
     if (activeTool !== undefined) {
-      if (
-        activeTool.tool.constructor === tool.constructor &&
-        activeTool.tool.context === tool.context
-      ) {
+      // Check if this is the exact same tool instance
+      if (activeTool.tool === tool) {
         if (tool.toggle) {
           this.deactivate_();
         }
         return;
       }
+      // Different tool instance - deactivate the old one first
       if (activeTool.tool.toggle && !tool.toggle) {
         this.queuedTool = activeTool.tool;
       }
@@ -467,6 +487,8 @@ export class GlobalToolBinder extends RefCounted {
       });
     }
     tool.activate(activation);
+    // Notify that activation state changed so it gets serialized
+    tool.localBinder.changed.dispatch();
     return tool;
   }
 
@@ -505,8 +527,11 @@ export class GlobalToolBinder extends RefCounted {
     this.debounceDeactivate.cancel();
     const activation = this.activeTool_;
     if (activation === undefined) return;
+    const tool = activation.tool;
     this.activeTool_ = undefined;
     activation.dispose();
+    // Notify that activation state changed so it gets serialized
+    tool.localBinder.changed.dispatch();
   }
 
   // Deactivate the current tool and, if a toggle tool was displaced by it,
@@ -588,13 +613,26 @@ export class LocalToolBinder<
   }
 
   toJSON(): any {
-    const { bindings } = this;
-    if (bindings.size === 0) return undefined;
+    const { bindings, globalBinder } = this;
+    if (
+      bindings.size === 0 &&
+      globalBinder.activeTool_?.tool.localBinder !== this
+    )
+      return undefined;
     const obj: any = {};
+
+    // Serialize tool bindings
     for (const [key, value] of bindings) {
       obj[key] = value.toJSON();
     }
-    return obj;
+
+    // Serialize which tool is currently active
+    const activeTool = globalBinder.activeTool_?.tool;
+    if (activeTool !== undefined && activeTool.localBinder === this) {
+      obj._active = activeTool.keyBinding;
+    }
+
+    return Object.keys(obj).length > 0 ? obj : undefined;
   }
 
   getCommonToolProperties(): any {
@@ -627,13 +665,33 @@ export class LocalToolBinder<
   restoreState(obj: any) {
     if (obj === undefined) return;
     verifyObject(obj);
+
+    // Extract the active tool key from serialized state
+    const activeToolKey = obj._active;
+
     for (const [key, value] of Object.entries(obj)) {
+      // Skip the _active metadata key
+      if (key === "_active") continue;
+
       if (!key.match(TOOL_KEY_PATTERN)) {
         throw new Error(`Invalid tool key: ${JSON.stringify(key)}`);
       }
       const tool = restoreTool(this.context, value);
-      if (tool === undefined) return;
+      if (tool === undefined) {
+        // Tool could not be restored (e.g., unknown tool type for this context).
+        // Continue restoring other tools instead of aborting entirely.
+        continue;
+      }
       this.set(key, tool);
+    }
+
+    // Reactivate the tool that was previously active
+    if (
+      activeToolKey !== undefined &&
+      typeof activeToolKey === "string" &&
+      this.bindings.has(activeToolKey)
+    ) {
+      this.globalBinder.activate(activeToolKey);
     }
   }
 }
