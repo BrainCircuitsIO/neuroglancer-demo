@@ -486,6 +486,10 @@ export class ChunkedGraphLayer extends withSegmentationLayerBackendState(
   private updateChunkPriorities() {
     const { source, chunkManager } = this;
     chunkManager.registerLayer(this);
+    // Leaf requests are active if any visible view is zoomed in far enough;
+    // otherwise the last view processed would decide.
+    let anyViewChecked = false;
+    let anyLeafRequestsActive = false;
     for (const attachment of this.attachments.values()) {
       const { view } = attachment;
       const visibility = view.visibility.value;
@@ -505,11 +509,11 @@ export class ChunkedGraphLayer extends withSegmentationLayerBackendState(
 
       const pixelSize = projectionParameters.pixelSize * 1.1;
       const smallestVoxelSize = tsource.effectiveVoxelSize;
-      this.leafRequestsActive.value =
-        this.renderRatioLimit >= pixelSize / Math.min(...smallestVoxelSize);
-      if (!this.leafRequestsActive.value) {
+      anyViewChecked = true;
+      if (this.renderRatioLimit < pixelSize / Math.min(...smallestVoxelSize)) {
         continue;
       }
+      anyLeafRequestsActive = true;
 
       const priorityTier = getPriorityTier(visibility);
       const basePriority = getBasePriority(visibility);
@@ -553,6 +557,9 @@ export class ChunkedGraphLayer extends withSegmentationLayerBackendState(
           });
         },
       );
+    }
+    if (anyViewChecked) {
+      this.leafRequestsActive.value = anyLeafRequestsActive;
     }
   }
 

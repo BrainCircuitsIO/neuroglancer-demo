@@ -2306,6 +2306,12 @@ class SliceViewPanelChunkedGraphLayer extends SliceViewPanelRenderLayer {
         this.showOrHideMessage(this.leafRequestsActive.value);
       }),
     );
+    // Otherwise the message outlives the layer (e.g. when the layer is
+    // recreated by a state update) and can never be dismissed.
+    this.registerDisposer(() => {
+      this.leafRequestsStatusMessage?.dispose();
+      this.leafRequestsStatusMessage = undefined;
+    });
   }
 
   attach(attachment: VisibleLayerInfo<LayerView, AttachmentState>) {
