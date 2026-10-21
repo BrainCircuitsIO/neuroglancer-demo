@@ -446,6 +446,33 @@ eventPhaseNames[Event.AT_TARGET] = "at";
 eventPhaseNames[Event.CAPTURING_PHASE] = "capture";
 eventPhaseNames[Event.BUBBLING_PHASE] = "bubble";
 
+// Keys forwarded to the embedding page (NeuroMaps) instead of triggering
+// Neuroglancer actions, e.g. digits used to set annotation confidence.
+const identifiersToForward = [
+  "digit1",
+  "digit2",
+  "digit3",
+  "digit4",
+  "digit5",
+  "digit0",
+  "keyq",
+  "keyw",
+  "keyd",
+];
+
+function forwardToParent(identifier: EventIdentifier, originalEvent: Event) {
+  if (!identifiersToForward.includes(identifier)) return false;
+  window.parent.postMessage(
+    {
+      type: "keyboardEvent",
+      key: identifier,
+    },
+    "*",
+  );
+  originalEvent.stopPropagation();
+  return true;
+}
+
 export function dispatchEvent(
   baseIdentifier: EventIdentifier,
   originalEvent: Event,
@@ -453,28 +480,7 @@ export function dispatchEvent(
   detail: any,
   eventMap: EventActionMapInterface,
 ) {
-  const identifiersToSkip = [
-    "digit1",
-    "digit2",
-    "digit3",
-    "digit4",
-    "digit5",
-    "digit0",
-    "keyq",
-    "keyw",
-    "keyd",
-  ];
-  if (identifiersToSkip.includes(baseIdentifier)) {
-    window.parent.postMessage(
-      {
-        type: "keyboardEvent",
-        key: baseIdentifier,
-      },
-      "*",
-    );
-    originalEvent.stopPropagation();
-    return;
-  }
+  if (forwardToParent(baseIdentifier, originalEvent)) return;
   const eventIdentifier = eventPhaseNames[eventPhase] + ":" + baseIdentifier;
   const eventAction = eventMap.get(eventIdentifier);
   dispatchEventAction(originalEvent, detail, eventAction);
@@ -523,6 +529,14 @@ export function dispatchEventWithModifiers(
 ) {
   const phase = eventPhaseNames[originalEvent.eventPhase];
   const modifiers = getEventModifierMask(originalEvent);
+  if (
+    forwardToParent(
+      getStrokeIdentifier(baseIdentifier, modifiers),
+      originalEvent,
+    )
+  ) {
+    return;
+  }
   let eventAction = eventMap.get(
     `${phase}:${getStrokeIdentifier(baseIdentifier, modifiers)}`,
   );
